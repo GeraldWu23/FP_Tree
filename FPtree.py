@@ -92,14 +92,15 @@ class FPTree:
         # attach all path ending with to_cut to conditional FP-tree
         for node in tree.item_list[to_cut]:
             print()
-            print(node.name)
-            cond_tree.support_list[node.name] += 1
+            print(node.name, node.count)
+            path_weight = node.count  # count(support of this path is provided by the cutoff node)
+            cond_tree.support_list[node.name] += path_weight
             cond_tree.item_list[to_cut].append(node)
             print(node.path)
             while node.parent.name != '_root':
                 node = node.parent
                 print(node.name)
-                cond_tree.support_list[node.name] += 1
+                cond_tree.support_list[node.name] += path_weight
                 cond_tree.item_list[node.name].append(node)
             # attach to new cond_tree
             node.parent = cond_tree.root
@@ -154,10 +155,10 @@ if __name__ == "__main__":
     # with open('./fptree.pkl', 'wb') as ftree:
     #     pickle.dump(fptree, ftree)
 
-    testset = [[1, 2, 3], [1, 2, 4], [1, 4], [2, 3, 5], [1, 3, 4, 5], [3, 4, 5], [3, 5]]
+    testset = [[1, 2, 3], [1, 2, 4], [1, 4], [2, 3, 5], [1, 3, 4, 5], [3, 4, 5], [3, 4, 5]]
     tree = FPTree(testset, 2)
     fptree = tree.grow()
 
     cf = tree.cut_tree(5)
     print(cf.support_list)
-    # cf.cut_tree(4, min_support=1)
+    # cfcf = cf.cut_tree(4, min_support=1)
