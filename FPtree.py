@@ -14,6 +14,9 @@ class FPTree:
             self.path = []
             self.parent = None
 
+        def __repr__(self):
+            return f'Node({self.name})'
+
     def __init__(self, datalist, min_support):
         self.data = [sorted(item) for item in datalist]
         self.min_support = min_support
@@ -59,13 +62,74 @@ class FPTree:
         :return: new node_b
         """
         node_b.count += node_a.count
-        for offspring in node_a.next:
-            if offspring.name not in node_b.next:
-                node_b.next[offspring.name] = offspring
+        for offspring in sorted(node_a.next):
+            if offspring not in node_b.next:
+                node_b.next[offspring] = node_a.next[offspring]
             else:
-                node_b.next[offspring.name] = self.merge(offspring, node_b.next[offspring.name])
+                node_b.next[offspring] = self.merge(node_a.next[offspring], node_b.next[offspring])
+        node_a.parent.next[node_b.name] = node_b
         del node_a
+
         return node_b
+
+    def filter_unsupported(self, node, tree):
+        """
+        filter unsupported nodes
+        :param node:
+        :param tree:
+        :return:
+        """
+        print(sorted(node.next))
+        for n in sorted(node.next):
+            self.filter_unsupported(node.next[n], tree)
+        # min_support = tree.min_support
+        # filtered = set()
+        # print('\n-------------')
+        # print('filter')
+        # if node.name != "_root":
+        #     print(f'parent name: {node.parent.name}')
+        # else:
+        #     print("node is _root.")
+        # print(sorted(node.next))
+        # # from small ids to big ids
+        #
+        # for key in sorted(node.next):
+        #     print(key)
+        #
+        #     son = node.next[key]
+        #     _, son = self.filter_unsupported(son, tree)
+        #     if tree.support_list[key] < min_support:
+        #         print(f'lask of support: {key}')
+        #         filtered.add(key)
+        #         # attach all offspring to node
+        #         for offspring in son.next:
+        #             if offspring in node.next:
+        #                 node.next[offspring] = self.merge(son.next[offspring], node.next[offspring])
+        #             else:
+        #                 son.next[offspring].parent = node
+        #                 node.next[offspring] = son.next[offspring]
+        #     else:
+        #         continue
+        #
+        #return filtered, node
+
+    def check_empty(self, node):
+        """
+        delete all nodes with count==0 under node
+        :param node:
+        :return:
+        """
+        to_delete = []
+        for key in node.next:
+            if node.next[key].count == 0:
+                to_delete.append(key)
+            else:
+                self.check_empty(node.next[key])
+
+        for key in to_delete:
+            del node.next[key]
+
+        return node
 
     def cut_tree(self, to_cut, tree=None, min_support=None):
         """
@@ -82,68 +146,49 @@ class FPTree:
         cond_tree = deepcopy(tree)
         cond_tree.support_list = defaultdict(int)
         cond_tree.item_list = defaultdict(list)
-        cond_tree.root = self.Node('_root')
+        cond_tree.root = deepcopy(self.root)
 
-        if tree.support_list[to_cut] < min_support:
-            # to_cut is not a frequent item itself
-            print(tree.support_list[to_cut], min_support)
-            return
+        # clean count of conditional FP-tree
+        cache = [cond_tree.root]
+        while cache:
+            to_clean = cache.pop(0)
+            if to_clean.name != to_cut:
+                to_clean.count = 0
+            else:
+                cond_tree.item_list[to_cut].append(to_clean)
+            for key in to_clean.next:
+                cache.append(to_clean.next[key])
 
-        # attach all path ending with to_cut to conditional FP-tree
-        for node in tree.item_list[to_cut]:
-            print()
-            print(node.name, node.count)
+        # update count of nodes along all paths ending with to_cut to conditional FP-tree
+        for node in cond_tree.item_list[to_cut]:
             path_weight = node.count  # count(support of this path is provided by the cutoff node)
             cond_tree.support_list[node.name] += path_weight
-            cond_tree.item_list[to_cut].append(node)
             print(node.path)
             while node.parent.name != '_root':
-                node = node.parent
+                parent = node.parent
+                parent.count += path_weight
+                node = parent
                 print(node.name)
                 cond_tree.support_list[node.name] += path_weight
                 cond_tree.item_list[node.name].append(node)
+            node.parent.count += path_weight  # root
+
             # attach to new cond_tree
             node.parent = cond_tree.root
-            cond_tree.root.next[node.name] = node.parent  # not repetitive
-        del cond_tree.support_list[to_cut]
+            cond_tree.root.next[node.name] = node  # not repetitive
+
+        # delete to_cut
+        for node in cond_tree.item_list[to_cut]:
+            del node.parent.next[to_cut]
         del cond_tree.item_list[to_cut]
+        del cond_tree.support_list[to_cut]
 
-        # test
-        return cond_tree
-
-
-
-
-
-
-        # update prefix
-        for cur in cond_tree.item_list[to_cut]:
-            node = cur
-            while cur.parent and cur.parent.name != '_root':
-                cond_tree.support_list[cur.parent.name] -= (cur.parent.count - cur.count)
-                cur.parent.count = cur.count
-                cur = cur.parent
-
-            # cut to_cut nodes
-            print(node.name)
-            del node.parent.next[node.name]
-        del cond_tree.item_list[node.name]
-
-        # remove lack-supports
-        for key in cond_tree.support_list:
-            if cond_tree.support_list[key] < min_support:
-                del(cond_tree.support_list[key])
-
-                # cut nodes
-                for node in cond_tree.item_list:
-                    for offspring in node.next:
-                        if offspring.name not in node.parent.next:
-                            node.parent.next[offspring.name] = offspring
-                        else:
-                            node.parent.next[offspring.name] = self.merge(offspring, node.parent.next[offspring.name])
-                del cond_tree.item_list[key]
+        # clean empty-count nodes
+        cond_tree.root = self.check_empty(cond_tree.root)
 
         return cond_tree
+
+
 
 
 if __name__ == "__main__":
@@ -155,10 +200,14 @@ if __name__ == "__main__":
     # with open('./fptree.pkl', 'wb') as ftree:
     #     pickle.dump(fptree, ftree)
 
-    testset = [[1, 2, 3], [1, 2, 4], [1, 4], [2, 3, 5], [1, 3, 4, 5], [3, 4, 5], [3, 4, 5]]
+    testset = [[1, 2, 3], [1, 2, 4], [1, 4], [2, 3, 6], [1, 3, 4, 6], [3, 4, 6], [3, 4, 5, 6]]
     tree = FPTree(testset, 2)
     fptree = tree.grow()
 
-    cf = tree.cut_tree(5)
-    print(cf.support_list)
-    # cfcf = cf.cut_tree(4, min_support=1)
+    cf = tree.cut_tree(6)
+    # print(cf.support_list)
+    r = cf.root
+    # cf.filter_unsupported(cf.root, cf)
+    # r = cf.root
+
+
