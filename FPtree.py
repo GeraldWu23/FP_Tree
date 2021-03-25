@@ -1,6 +1,7 @@
 import pickle
 from tqdm import tqdm
 from copy import deepcopy
+from time import time
 from collections import defaultdict
 # from dataset import id2key
 
@@ -84,24 +85,16 @@ class FPTree:
         #     self.filter_unsupported(node.next[n], tree)
         min_support = tree.min_support
         filtered = set()
-        print('\n-------------')
-        print('filter')
-        if node.name != "_root":
-            print(f'parent name: {node.parent.name}')
-        else:
-            print("node is _root.")
-        print(sorted(node.next))
-        # from small ids to big ids
 
+        # from small ids to big ids
         for key in sorted(node.next):
-            print(key)
+            # print(key)
 
             son = node.next[key]
             _, son = self.filter_unsupported(son, tree)
             if tree.support_list[key] < min_support:
-                print(f'lack of support: {key}')
+                # print(f'lack of support: {key}')
                 filtered.add(key)
-
 
                 # attach all offspring to node
                 for offspring in son.next:
@@ -116,8 +109,12 @@ class FPTree:
         # delete unsupported node
         for key in filtered:
             del node.next[key]
-            del tree.support_list[key]
-            del tree.item_list[key]
+
+            # could be deleted when filtering other nodes
+            if key in tree.support_list:
+                del tree.support_list[key]
+            if key in tree.item_list:
+                del tree.item_list[key]
 
         return filtered, node
 
@@ -139,7 +136,7 @@ class FPTree:
 
         return node
 
-    def cut_tree(self, to_cut, tree=None, min_support=None):
+    def cut_tree(self, to_cut, min_support=None):
         """
         update support of prefixes, cut to_cut, cut lack-of-supports
         :param tree: tree to make conditional FP-tree
@@ -147,7 +144,8 @@ class FPTree:
         :param min_support: minimum support to be a frequent item
         :return:
         """
-        tree = tree if tree else self
+        # print('cut_tree---------------------')
+        tree = self
         min_support = min_support if min_support else self.min_support
 
         # create conditional FP-tree
@@ -158,8 +156,10 @@ class FPTree:
 
         # clean count of conditional FP-tree
         cache = [cond_tree.root]
+
         while cache:
             to_clean = cache.pop(0)
+            print(to_clean)
             if to_clean.name != to_cut:
                 to_clean.count = 0
             else:
@@ -169,14 +169,15 @@ class FPTree:
 
         # update count of nodes along all paths ending with to_cut to conditional FP-tree
         for node in cond_tree.item_list[to_cut]:
+            print(f"it's in {node.name}")
             path_weight = node.count  # count(support of this path is provided by the cutoff node)
             cond_tree.support_list[node.name] += path_weight
-            print(node.path)
+            # print(node.path)
             while node.parent.name != '_root':
                 parent = node.parent
                 parent.count += path_weight
                 node = parent
-                print(node.name)
+                # print(node.name)
                 cond_tree.support_list[node.name] += path_weight
                 cond_tree.item_list[node.name].append(node)
             node.parent.count += path_weight  # root
@@ -199,12 +200,32 @@ class FPTree:
 
         return cond_tree
 
+    def freq_item(self, endwith=''):
+        """
+        get frequent items ending with a character or a string
+
+        :param endwith:
+        :return:
+        """
+
+        freq_items = []
+        for key in sorted([k for k in self.support_list if k != '_root'], reverse=True):
+            if self.support_list[key] >= self.min_support:  # if key is supported
+                freq_items.append(str(key) + endwith)  # cond_tree is None
+
+                # FIXME: key in support_list but not in tree
+                cond_tree = self.cut_tree(key)
+
+                freq_items.extend(cond_tree.freq_item(str(key) + endwith))
+        return freq_items
+
 
 if __name__ == "__main__":
-    data_file = open('./data.pkl', 'rb')
-    dataset = pickle.load(data_file)
+    start = time()
+    # data_file = open('./data.pkl', 'rb')
+    # dataset = pickle.load(data_file)
 
-    # tree = FPTree(dataset, 1)
+    # tree = FPTree(dataset, 7)
     # fptree = tree.grow()
     # with open('./fptree.pkl', 'wb') as ftree:
     #     pickle.dump(fptree, ftree)
@@ -223,16 +244,15 @@ if __name__ == "__main__":
                [3, 5],
                [6]]
     tree = FPTree(testset, 3)
-    fptree = tree.grow()
+    root = tree.grow()
 
-    cf = tree.cut_tree(6)
-    # print(cf.support_list)
-    r = cf.root
-
-    cfcf = cf.cut_tree(5)
-
-    r = cfcf.root
-
-    cfcfcf = cfcf.cut_tree(4)
-    r = cfcfcf.root
+    test_freq_items = tree.freq_item()
+    end = time()
+    print(f'{float(end-start)/60}')
+    # cfcf = cf.cut_tree(5)
+    #
+    # r = cfcf.root
+    #
+    # cfcfcf = cfcf.cut_tree(4)
+    # r = cfcfcf.root
 
