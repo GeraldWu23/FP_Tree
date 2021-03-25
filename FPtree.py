@@ -1,3 +1,5 @@
+# dont use copy tree.item_list, copied nodes in item_list points to nodes in original tree
+
 import pickle
 from tqdm import tqdm
 from copy import deepcopy
@@ -15,8 +17,8 @@ class FPTree:
             self.path = []
             self.parent = None
 
-        def __repr__(self):
-            return f'Node({self.name})'
+        # def __repr__(self):
+        #     return f'Node({self.name})'
 
     def __init__(self, datalist, min_support):
         self.data = [sorted(item) for item in datalist]
@@ -136,7 +138,7 @@ class FPTree:
 
         return node
 
-    def cut_tree(self, to_cut, min_support=None):
+    def cut_tree(self, to_cut, tree, min_support=None):
         """
         update support of prefixes, cut to_cut, cut lack-of-supports
         :param tree: tree to make conditional FP-tree
@@ -144,22 +146,21 @@ class FPTree:
         :param min_support: minimum support to be a frequent item
         :return:
         """
-        # print('cut_tree---------------------')
-        tree = self
+
         min_support = min_support if min_support else self.min_support
 
         # create conditional FP-tree
         cond_tree = deepcopy(tree)
         cond_tree.support_list = defaultdict(int)
         cond_tree.item_list = defaultdict(list)
-        cond_tree.root = deepcopy(self.root)
+        cond_tree.root = deepcopy(tree.root)
 
         # clean count of conditional FP-tree
         cache = [cond_tree.root]
 
         while cache:
             to_clean = cache.pop(0)
-            print(to_clean)
+            # print(to_clean)
             if to_clean.name != to_cut:
                 to_clean.count = 0
             else:
@@ -200,7 +201,7 @@ class FPTree:
 
         return cond_tree
 
-    def freq_item(self, endwith=''):
+    def freq_item(self, tree, endwith=''):
         """
         get frequent items ending with a character or a string
 
@@ -209,44 +210,46 @@ class FPTree:
         """
 
         freq_items = []
-        for key in sorted([k for k in self.support_list if k != '_root'], reverse=True):
-            if self.support_list[key] >= self.min_support:  # if key is supported
-                freq_items.append(str(key) + endwith)  # cond_tree is None
-
-                # FIXME: key in support_list but not in tree
-                cond_tree = self.cut_tree(key)
-
-                freq_items.extend(cond_tree.freq_item(str(key) + endwith))
-        return freq_items
+        # for key in sorted([k for k in tree.support_list if k != '_root'], reverse=True):
+        #     if tree.support_list[key] >= tree.min_support:  # if key is supported
+        #         freq_items.append(str(key) + endwith)  # cond_tree is None
+        #         print(self.support_list)
+        #         tree_cp = deepcopy(tree)
+        #         # FIXME: tree_cp.item_list's pointer point to nodes from original tree
+                  # TODO: a valid way to make a copy
+        #         cond_tree = self.cut_tree(key, tree_cp)
+        #
+        #         freq_items.extend(self.freq_item(cond_tree, str(key) + endwith))
+        # return freq_items
 
 
 if __name__ == "__main__":
     start = time()
-    # data_file = open('./data.pkl', 'rb')
-    # dataset = pickle.load(data_file)
+    data_file = open('./data.pkl', 'rb')
+    dataset = pickle.load(data_file)
 
-    # tree = FPTree(dataset, 7)
-    # fptree = tree.grow()
-    # with open('./fptree.pkl', 'wb') as ftree:
-    #     pickle.dump(fptree, ftree)
+    tree = FPTree(dataset, 7)
+    fptree = tree.grow()
+    with open('./fptree.pkl', 'wb') as ftree:
+        pickle.dump(fptree, ftree)
 
-    testset = [[1, 2, 3, 4],
-               [1, 2, 3, 5],
-               [1, 2, 4, 6],
-               [1, 2, 4, 5, 6],
-               [1, 2, 5],
-               [1, 2, 5, 6],
-               [1, 2, 6],
-               [2, 3],
-               [2, 4, 5, 6],
-               [3, 4, 5, 6],
-               [3, 4, 6],
-               [3, 5],
-               [6]]
-    tree = FPTree(testset, 3)
+    # testset = [[1, 2, 3, 4],
+    #            [1, 2, 3, 5],
+    #            [1, 2, 4, 6],
+    #            [1, 2, 4, 5, 6],
+    #            [1, 2, 5],
+    #            [1, 2, 5, 6],
+    #            [1, 2, 6],
+    #            [2, 3],
+    #            [2, 4, 5, 6],
+    #            [3, 4, 5, 6],
+    #            [3, 4, 6],
+    #            [3, 5],
+    #            [6]]
+    tree = FPTree(dataset, 7)
     root = tree.grow()
 
-    test_freq_items = tree.freq_item()
+    test_freq_items = tree.freq_item(tree)
     end = time()
     print(f'{float(end-start)/60}')
     # cfcf = cf.cut_tree(5)
