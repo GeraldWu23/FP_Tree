@@ -79,43 +79,51 @@ class FPTree:
         :param tree:
         :return:
         """
+        # print(sorted(node.next), node.count)
+        # for n in sorted(node.next):
+        #     self.filter_unsupported(node.next[n], tree)
+        min_support = tree.min_support
+        filtered = set()
+        print('\n-------------')
+        print('filter')
+        if node.name != "_root":
+            print(f'parent name: {node.parent.name}')
+        else:
+            print("node is _root.")
         print(sorted(node.next))
-        for n in sorted(node.next):
-            self.filter_unsupported(node.next[n], tree)
-        # min_support = tree.min_support
-        # filtered = set()
-        # print('\n-------------')
-        # print('filter')
-        # if node.name != "_root":
-        #     print(f'parent name: {node.parent.name}')
-        # else:
-        #     print("node is _root.")
-        # print(sorted(node.next))
-        # # from small ids to big ids
-        #
-        # for key in sorted(node.next):
-        #     print(key)
-        #
-        #     son = node.next[key]
-        #     _, son = self.filter_unsupported(son, tree)
-        #     if tree.support_list[key] < min_support:
-        #         print(f'lask of support: {key}')
-        #         filtered.add(key)
-        #         # attach all offspring to node
-        #         for offspring in son.next:
-        #             if offspring in node.next:
-        #                 node.next[offspring] = self.merge(son.next[offspring], node.next[offspring])
-        #             else:
-        #                 son.next[offspring].parent = node
-        #                 node.next[offspring] = son.next[offspring]
-        #     else:
-        #         continue
-        #
-        #return filtered, node
+        # from small ids to big ids
+
+        for key in sorted(node.next):
+            print(key)
+
+            son = node.next[key]
+            _, son = self.filter_unsupported(son, tree)
+            if tree.support_list[key] < min_support:
+                print(f'lack of support: {key}')
+                filtered.add(key)
+
+
+                # attach all offspring to node
+                for offspring in son.next:
+                    if offspring in node.next:
+                        node.next[offspring] = self.merge(son.next[offspring], node.next[offspring])
+                    else:
+                        son.next[offspring].parent = node
+                        node.next[offspring] = son.next[offspring]
+            else:
+                continue
+
+        # delete unsupported node
+        for key in filtered:
+            del node.next[key]
+            del tree.support_list[key]
+            del tree.item_list[key]
+
+        return filtered, node
 
     def check_empty(self, node):
         """
-        delete all nodes with count==0 under node
+        delete all nodes with count==0 under a node
         :param node:
         :return:
         """
@@ -186,9 +194,10 @@ class FPTree:
         # clean empty-count nodes
         cond_tree.root = self.check_empty(cond_tree.root)
 
+        # filter unsupported nodes
+        cond_tree.filter_unsupported(cond_tree.root, cond_tree)
+
         return cond_tree
-
-
 
 
 if __name__ == "__main__":
@@ -200,14 +209,30 @@ if __name__ == "__main__":
     # with open('./fptree.pkl', 'wb') as ftree:
     #     pickle.dump(fptree, ftree)
 
-    testset = [[1, 2, 3], [1, 2, 4], [1, 4], [2, 3, 6], [1, 3, 4, 6], [3, 4, 6], [3, 4, 5, 6]]
-    tree = FPTree(testset, 2)
+    testset = [[1, 2, 3, 4],
+               [1, 2, 3, 5],
+               [1, 2, 4, 6],
+               [1, 2, 4, 5, 6],
+               [1, 2, 5],
+               [1, 2, 5, 6],
+               [1, 2, 6],
+               [2, 3],
+               [2, 4, 5, 6],
+               [3, 4, 5, 6],
+               [3, 4, 6],
+               [3, 5],
+               [6]]
+    tree = FPTree(testset, 3)
     fptree = tree.grow()
 
     cf = tree.cut_tree(6)
     # print(cf.support_list)
     r = cf.root
-    # cf.filter_unsupported(cf.root, cf)
-    # r = cf.root
 
+    cfcf = cf.cut_tree(5)
+
+    r = cfcf.root
+
+    cfcfcf = cfcf.cut_tree(4)
+    r = cfcfcf.root
 
