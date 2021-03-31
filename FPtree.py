@@ -10,6 +10,9 @@ from collections import defaultdict
 
 class FPTree:
     class Node:
+        """
+        Node in FPTree
+        """
         def __init__(self, name):
             self.name = name
             self.count = 0
@@ -21,6 +24,11 @@ class FPTree:
         #     return f'Node({self.name})'
 
     def __init__(self, datalist, min_support):
+        """
+
+        :param datalist: a list of lists of int as ids of items
+        :param min_support:  the minimum accepted support(times of appearance) to be a frequent item
+        """
         self.data = [sorted(item) for item in datalist]
         self.min_support = min_support
         self.root = self.Node('_root')
@@ -59,9 +67,10 @@ class FPTree:
 
     def merge(self, node_a, node_b, tree=None):
         """
-        merge node_a to node_b
+        merge node_a to node_b in tree
         :param node_a: node
         :param node_b: node
+        :param tree: tree, node_a and node_b belong to tree
         :return: new node_b
         """
 
@@ -293,7 +302,7 @@ class FPTree:
 
         return cond_tree
 
-    def freq_item(self, tree, endwith=''):
+    def freq_item(self, tree, endwith=[]):
         """
         get frequent items ending with a character or a string
 
@@ -304,12 +313,13 @@ class FPTree:
         freq_items = []
         for key in sorted([k for k in tree.support_list if k != '_root'], reverse=True):
             if tree.support_list[key] >= tree.min_support:  # if key is supported
-                freq_items.append(str(key) + endwith)  # cond_tree is None
+                freq_items.append([key] + endwith)  # cond_tree is None
                 # print(tree.support_list)
                 tree_cp = deepcopy(tree)
                 cond_tree = tree_cp.cut_tree(key, tree_cp)
 
-                freq_items.extend(cond_tree.freq_item(cond_tree, str(key) + endwith))
+                freq_items.extend(cond_tree.freq_item(cond_tree, [key] + endwith))
+        print(freq_items)
         return freq_items
 
 
@@ -332,7 +342,7 @@ if __name__ == "__main__":
                [3, 5],
                [6]]
 
-    samp_dataset = dataset[:1000]
+    samp_dataset = dataset[:100]
     tree = FPTree(samp_dataset, 7)
     # with open('./fptree.pkl', 'wb') as ftree:
     #     pickle.dump(tree, ftree)
@@ -345,7 +355,7 @@ if __name__ == "__main__":
     freq_items = []
 
 
-    def freq_item(tree, endwith=''):
+    def freq_item(tree, endwith=[]):
         """
         get frequent items ending with a character or a string
 
@@ -356,12 +366,12 @@ if __name__ == "__main__":
         freq_items_ = []
         for key in tqdm(sorted([k for k in tree.support_list if k != '_root'], reverse=True)):
             if tree.support_list[key] >= tree.min_support:  # if key is supported
-                freq_items_.append(str(key) + endwith)  # cond_tree is None
+                freq_items_.append([key] + endwith)  # cond_tree is None
                 # print(f'key is {tree.support_list[key]}')
                 tree_cp = deepcopy(tree)
                 # try:
                 cond_tree = tree_cp.cut_tree(key, tree_cp)
-                freq_items_.extend(cond_tree.freq_item(cond_tree, str(key) + endwith))
+                freq_items_.extend(cond_tree.freq_item(cond_tree, [key] + endwith))
                 # except KeyError as e:
                 #     print(f'keyerror: {e}')
                 #     return tree_cp
@@ -369,7 +379,8 @@ if __name__ == "__main__":
         return freq_items_
 
 
-    fi = freq_item(tree)
+    fi = tree.freq_item(tree)
+    print(fi)
 
     end = time()
 
