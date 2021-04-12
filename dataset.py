@@ -2,6 +2,7 @@ import pandas as pd
 from pandas import Series, DataFrame
 import pickle
 from tqdm import tqdm
+from collections import Counter
 
 
 df = pd.read_csv('Groceries_dataset.csv')
@@ -14,19 +15,22 @@ for k, v in tqdm(series.items()):
     series[k] = list(set(v.split()))
 
 obj = list()
+counter = Counter()
 for li in series.tolist():
     obj.extend(li)
+    counter.update(li)
 
 obj = list(set(obj))
+obj = sorted(obj, key=lambda k: counter[k], reverse=True)  # sorted according to the count, from more to less
 
 key2id = {}
 id2key = {}
-counter = 0
+id = 0
 
 for item in tqdm(obj):
-    id2key[counter] = item
-    key2id[item] = counter
-    counter += 1
+    id2key[id] = item
+    key2id[item] = id
+    id += 1
 
 dataset = []
 for customer in tqdm(series.tolist()):

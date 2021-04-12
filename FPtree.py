@@ -342,7 +342,7 @@ if __name__ == "__main__":
                [3, 5],
                [6]]
 
-    samp_dataset = dataset[:100]
+    samp_dataset = dataset[:]
     tree = FPTree(samp_dataset, 7)
     # with open('./fptree.pkl', 'wb') as ftree:
     #     pickle.dump(tree, ftree)
@@ -353,30 +353,6 @@ if __name__ == "__main__":
 
     # test_freq_items = tree.freq_item(tree)
     freq_items = []
-
-
-    def freq_item(tree, endwith=[]):
-        """
-        get frequent items ending with a character or a string
-
-        :param endwith:
-        :return:
-        """
-
-        freq_items_ = []
-        for key in tqdm(sorted([k for k in tree.support_list if k != '_root'], reverse=True)):
-            if tree.support_list[key] >= tree.min_support:  # if key is supported
-                freq_items_.append([key] + endwith)  # cond_tree is None
-                # print(f'key is {tree.support_list[key]}')
-                tree_cp = deepcopy(tree)
-                # try:
-                cond_tree = tree_cp.cut_tree(key, tree_cp)
-                freq_items_.extend(cond_tree.freq_item(cond_tree, [key] + endwith))
-                # except KeyError as e:
-                #     print(f'keyerror: {e}')
-                #     return tree_cp
-        print(freq_items_)
-        return freq_items_
 
 
     fi = tree.freq_item(tree)
