@@ -354,9 +354,17 @@ if __name__ == "__main__":
     # test_freq_items = tree.freq_item(tree)
     freq_items = []
 
-
     fi = tree.freq_item(tree)
     print(fi)
+
+    try:
+
+        with open('result.txt', 'w') as f:
+            for i in range(len(fi)):
+                fi[i] = ', '.join([str(item) for item in fi[i] if item])
+            f.write('\n'.join(fi))
+    except:
+        print(f'\n\nwrite result error')
 
     end = time()
 
